@@ -9,6 +9,23 @@ typedef struct {
 } sbm_partition_metrics;
 
 /*
+ * @brief Structure for holding preferred block merge for sorting
+ */
+typedef struct {
+  double del_ent;
+  int32_t blk_lbl;
+  int32_t blk_move;
+} sbm_blk_merge_info;
+
+/*
+ * @brief Structure for holding block labels and sizes
+ */
+typedef struct {
+	int32_t blk_lbl;
+	int32_t blk_size;
+} sbm_blk_size;
+
+/*
  * @brief Compute the pair-wise precision and recall of partitioning
  *
  * @param blk_assn Block assignments predicted by algorithm
@@ -23,6 +40,31 @@ sbm_partition_metrics * sbm_pairwise_prec_recall(
     const int32_t nnodes);
 
 /*
+ * @brief Comparison operator used for sorting sbm_blk_merge_info objects
+ *        based on entropy change
+ *
+ * @param a Pointer to first object
+ * @param b Pointer to second object
+ *
+ * @return Integer specifying which element is larger
+ */
+int sbm_gt_sbm_blk_merge_info(
+    const void * a_ptr,
+    const void * b_ptr);
+
+/*
+ * @brief Comparison operator used for sorting sbm_blk_size objects
+ *
+ * @param a Pointer to first object
+ * @param b Pointer to second object
+ *
+ * @return Integer specifying which element is larger
+ */
+int sbm_lt_sbm_blk_size(
+		const void * a_ptr,
+		const void * b_ptr);
+
+/*
  * @brief Initialize block assignments. Only used for initial testing.
  *
  * @param blk_assn Block assignment array
@@ -33,6 +75,21 @@ void sbm_init_assn_rand(
     int32_t * blk_assn,
     const int32_t nnodes,
     const int32_t nblks);
+
+/*
+ * @brief Randomly bisect a block
+ *
+ * @param blk_lbl Label of block to bisect
+ * @param blk_assn Current block assignments of nodes
+ * @param blk_sizes Sizes of each block
+ * @param nblks Current number of blocks
+ */
+void sbm_random_bisect(
+		const int32_t blk_lbl,
+		int32_t * blk_assn,
+    int32_t * blk_sizes,
+		const int32_t nblks,
+		const int32_t nnodes);
 
 /*
  * @brief Compute interblock edge counts
@@ -74,32 +131,36 @@ int32_t sbm_new_nblks(
     const double contraction_factor);
 
 /*
- * @brief Compute the total number of edges incident to a given block
+ * @brief Compute the degree of each block
  *
- * @param blk_incident Matrix for holding block incidence counts
+ * @param blk_deg_in Matrix for holding block in-degrees
+ * @param blk_deg_out Matrix for holding block out-degrees
  * @param iblk_ec Matrix of interblock edge counts
  * @param nblks Number of blocks
  */
-void sbm_compute_blk_incident_edges(
-    int32_t * blk_incident,
+void sbm_compute_blk_deg(
+    int32_t * blk_in_deg,
+    int32_t * blk_out_deg,
     sbm_dyn_csr * iblk_ec,
     int32_t nblks);
 
 /*
- * @brief Count number of neighbors from each block for given node
+ * @brief Count number of in- and out-neighbors from each block for given node
  *
  * @param adj_mat Adjacency matrix of graph
  * @param node ID of node to count for
  * @param blk_assn Block assignments for nodes
  * @param nblks Number of blocks
- * @param node_ngbrs Array to put counts in
+ * @param node_ngbrs_in Array to hold in-neighbors
+ * @param node_ngbrs_out Array to hold out-neighbors
  */
 void sbm_node_ngbr_blk_count(
     const sbm_dyn_csr * const adj_mat,
     const int32_t node,
     const int32_t * const blk_assn,
     const int32_t nblks,
-    int32_t * node_ngbrs);
+    int32_t * node_ngbrs_in,
+    int32_t * node_ngbrs_out);
 
 /*
  * @brief Propose a block to move a node to
@@ -119,48 +180,49 @@ int32_t sbm_propose_new_blk(
     const sbm_dyn_csr * const adj_mat,
     const int32_t * const blk_assn,
     const sbm_dyn_csr * const iblk_ec,
-    const int32_t * const blk_incident,
+    const int32_t * const blk_in_deg,
+    const int32_t * const blk_out_deg,
     const int32_t nblks,
     const int force_unique);
 
 /*
  * @brief Update edge count matrix from proposed update
  *
+ * @param adj_mat Adjacency matrix
  * @param iblk_ec Interbock edge count matrix
  * @param blk_assn Block assignments of nodes
  * @param nblks Number of blocks
- * @param edge_int Array of vertex IDs for terminal end of edges on node moving blocks
- * @param edge_val Array of edge weights for edges attached to moving node
- * @param nedges Number of edges on moving node
+ * @param node_id Index of node being moved
  * @param from_blk ID of block node is moving from
  * @param to_blk ID of block node is moving to
  */
 void sbm_update_iblk_ec(
+    const sbm_dyn_csr * const adj_mat,
     sbm_dyn_csr * iblk_ec,
     const int32_t * const blk_assn,
     const int32_t nblks,
-    const int32_t * const edge_ind,
-    const int32_t * const edge_val,
-    const int32_t nedges,
+    const int32_t node_id,
     const int32_t from_blk,
     const int32_t to_blk);
 
 /*
  * @brief Update count of edges incident to blocks after proposed move
  *
- * @param blk_incident Array of edge counts incident to each block
+ * @param blk_in_deg Array of incoming degree for each block
+ * @param blk_out_deg Array of outgoing degree for each block
+ * @param adj_mat Adjacency matrix
  * @param blk_assn Block assignments of nodes
  * @param nblks Number of blocks
- * @param edge_val Array of edge weights for edges attached to moving node
- * @param nedges Number of edges on moving node
+ * @param node_id Index of node that is moving
  * @param from_blk ID of block node is moving from
  * @param to_blk ID of block node is moving to
  */
-void sbm_update_blk_incident(
-    int32_t * blk_incident,
+void sbm_update_blk_deg(
+    int32_t * blk_in_deg,
+    int32_t * blk_out_deg,
+    const sbm_dyn_csr * const adj_mat,
     const int32_t nblks,
-    const int32_t * const edge_val,
-    const int32_t nedges,
+    const int32_t node_id,
     const int32_t from_blk,
     const int32_t to_blk);
 
@@ -195,6 +257,20 @@ void sbm_relabel_blks(
     const int32_t nnodes);
 
 /*
+ * @brief Recalculate block sizes after block merges
+ *
+ * @param new_blk_sizes Array for holding new block sizes
+ * @param old_blk_sizes Array of block sizes before merging
+ * @param blk_map Map giving new labels
+ * @param old_nblks Number of blocks before merging
+ */
+void sbm_merged_blk_sizes(
+    int32_t * new_blk_sizes,
+    const int32_t * const old_blk_sizes,
+    const int32_t * const blk_map,
+    const int32_t old_nblks);
+
+/*
  * @brief Compute the entropy of the current partitioning
  *
  * @param iblk_ec Matrix of interblock edge counts
@@ -206,17 +282,20 @@ void sbm_relabel_blks(
  */
 double sbm_desc_len(
     const sbm_dyn_csr * const iblk_ec,
-    const int32_t * const blk_incident,
+    const int32_t * const blk_in_deg,
+    const int32_t * const blk_out_deg,
     const int32_t nblks,
     const int32_t nnodes);
 
 /*
  * @brief Compute the change in entropy from proposed move
  *
+ * @param adj_mat Adjacency matrix
  * @param iblk_ec Interblock edge count matrix
- * @param blk_incident Count of edges incident to blocks
- * @param node_ngbrs Array with number of neighbors of current node in each block
- * @param self_edges Number of edges node has with self
+ * @param blk_in_deg Total degree of edges going to each block
+ * @param blk_out_deg Total degree of edges going from each block
+ * @param blk_assn Block assignments for nodes
+ * @param node_id Index of node being moved
  * @param nblks Number of blocks
  * @param from_blk Block node is moving out of
  * @param to blk Block node is moving into
@@ -224,10 +303,12 @@ double sbm_desc_len(
  * @return Change in entropy
  */
 double sbm_delta_entropy(
-    const sbm_dyn_csr * const iblk_ec_new,
-    const int32_t * const blk_incident,
-    const int32_t * const node_ngbrs,
-    const int32_t self_edges,
+    const sbm_dyn_csr * const adj_mat,
+    const sbm_dyn_csr * const iblk_ec,
+    const int32_t * const blk_in_deg,
+    const int32_t * const blk_out_deg,
+    const int32_t * const blk_assn,
+    const int32_t node_id,
     const int32_t nblks,
     const int32_t from_blk,
     const int32_t to_blk);
@@ -236,9 +317,11 @@ double sbm_delta_entropy(
  * @brief Compute the Metropolis-Hastings correction
  *
  * @param iblk_ec Interblock edge-count matrix
- * @param blk_incident Array of edge counts incident to each block
+ * @param blk_in_deg Array of total in-degree for each block
+ * @param blk_out_deg Array of total out-degree for each block
  * @param blk_assn Block assignments of nodes
- * @param node_ngbrs Array with number of neighbors of current node in each block
+ * @param in_ngbrs Array with number of incoming edges from each block to given node
+ * @param out_ngbrs Array with number of outgoing edges to each block from given node
  * @param nblks Number of blocks
  * @param from_blk ID of block node is moving from
  * @param to_blk ID of block node is moving to
@@ -247,23 +330,41 @@ double sbm_delta_entropy(
  */
 double sbm_met_has(
     const sbm_dyn_csr * const iblk_ec,
-    const int32_t * const blk_incident,
+    const int32_t * const blk_in_deg,
+    const int32_t * const blk_out_deg,
     const int32_t * const blk_assn,
-    const int32_t * const node_ngbrs,
+    const int32_t * const in_ngbrs,
+    const int32_t * const out_ngbrs,
     const int32_t nblks,
     const int32_t from_blk,
     const int32_t to_blk);
+
+/*
+ * @brief Compute partitions for each time-step of a dynamic graph
+ *
+ * @param ifile_prefix Beginning of filenames for graph data
+ * @param nfiles Number of data files
+ * @param beta Parameter for exponential weight of entropy change in Metropolis-Hastings correction
+ */
+void sbm_stream_partition(
+		char * ifile_prefix,
+		int nfiles,
+		double beta);
 
 /*
  * @brief Compute partitioning
  *
  * @param adj_mat Adjacency matrix of graph
  * @param beta Parameter for exponential weight of entropy change in Metropolis-Hastings correction
+ * @param blk_assn Initial guess at partitioning (will be updated)
+ * @param nblks Number of blocks in initial guess
  *
- * @return Array of block labels
+ * @return Number of blocks in optimal partitioning
  */
-int32_t * sbm_partition_nblks(
+int32_t sbm_partition(
     sbm_dyn_csr * adj_mat,
-    const double beta);
+    const double beta,
+		int32_t * blk_assn,
+		int32_t nblks);
 
 #endif

@@ -18,6 +18,15 @@ double sbm_rand_dbl(
     double low,
     double high);
 
+/* @brief Generate a random int
+ *
+ * @param n Maximum value generated (excludes max)
+ *
+ * @return Randomly generated int
+ */
+int randint(
+    int n);
+
 /*
  * @brief Compares two doubles
  *
@@ -42,5 +51,17 @@ static inline double monotonic_seconds()
   clock_gettime(CLOCK_MONOTONIC, &ts);
   return ts.tv_sec + ts.tv_nsec * 1e-9;
 }
+
+/*
+ * @brief Compute an exponential involving integers
+ *
+ * @param base Base of expression
+ * @param exp Exponent of expression
+ *
+ * @return base**exp
+ */
+int32_t pow_int(
+    const int32_t base,
+    const int32_t exp);
 
 #endif

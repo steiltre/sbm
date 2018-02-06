@@ -9,8 +9,8 @@
  * Adjacency list node for vertex
  */
 typedef struct sbm_adj_list_node {
-  /* Index of column in array (called row to be consistent with csr structure) */
-  int32_t row_ind;
+  /* Index of column or row in array (column or row depending on whether adding to row or column representation of data) */
+  int32_t ind;
 
   /* Degree of edge */
   int32_t deg;
@@ -26,29 +26,34 @@ typedef struct {
   /* Number of rows in array */
   int32_t nrows;
 
+  /* Number of columns in array */
+  int32_t ncols;
+
   /* Number of nonzeroes in array */
   int32_t nnz;
 
-  /* Dynamic array of pointers to beginnings of rows */
-  //sbm_dyn_arr * row_ptr;
+  /* Array of pointers to beginnings of rows and columns */
   int32_t * row_ptr;
+  int32_t * col_ptr;
 
-  /* Dynamic array of indices */
-  //sbm_dyn_arr * row_ind;
+  /* Array of indices */
   int32_t * row_ind;
+  int32_t * col_ind;
 
-  /* Dynamic array of matrix values */
-  //sbm_dyn_arr * val;
-  int32_t * val;
+  /* Array of matrix values */
+  int32_t * row_val;
+  int32_t * col_val;
 
   /* Adjacency list buffers for each vertex */
-  sbm_adj_list_node ** adj_lists;
+  sbm_adj_list_node ** row_adj_lists;
+  sbm_adj_list_node ** col_adj_lists;
 
   /* Number of edges in adjacency lists */
   int32_t adj_list_size;
 
   /* Number of added nodes in adjacency lists */
-  int32_t adj_list_new_nodes;
+  int32_t row_adj_list_new_nodes;
+  int32_t col_adj_list_new_nodes;
 
 } sbm_dyn_csr;
 
@@ -67,7 +72,7 @@ sbm_adj_list_node * sbm_adj_list_node_init();
  * @param prev Previous neighbor
  */
 void sbm_adj_list_add_node(
-    int32_t row_ind,
+    int32_t ind,
     int32_t deg,
     sbm_adj_list_node * prev);
 

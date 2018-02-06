@@ -1,4 +1,6 @@
 # Binaries
 sbmpart
 
+*.pyc
+
 *.txt
