@@ -1107,15 +1107,14 @@ int32_t sbm_partition(
 			sbm_blk_size * blk_sizes_sort = malloc(nblks * sizeof(*blk_sizes_sort));
 			for (int32_t i=0; i<nblks; i++) {
 				blk_sizes_sort[i].blk_lbl = i;
-				blk_sizes_sort[i].blk_size = blk_sizes[i];
+        blk_sizes_sort[i].blk_size = 0;
+				//blk_sizes_sort[i].blk_size = blk_sizes[i];
 			}
 			/* Compute size of each block. */
 		  /* SHOULD PROBABLY MOVE THIS ELSEWHERE *********************************/
-      /*
 			for (int32_t i=0; i<adj_mat->nrows; i++) {
 				blk_sizes_sort[ blk_assn[i] ].blk_size++;
 			}
-      */
 
 			qsort(blk_sizes_sort, nblks, sizeof(*blk_sizes_sort), sbm_lt_sbm_blk_size);
 
